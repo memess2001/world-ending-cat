@@ -91,9 +91,12 @@ ANCHOR = [  # (key, label, group, w, a)  -- mostly flavor / can't-predict
 def score_one_soft(client, model, key, label):
     """ULTRA: one dedicated deep agent (search-grounded + thinking) scores ONE soft factor."""
     from google.genai import types
-    prompt = (f"あなたは地球規模の破滅リスクの専門アナリストにゃ。『{label}』という破滅リスク要因だけを担当し、"
-              "今日の世界情勢・最新ニュースを深く分析するにゃ。その『急性異常度』を 0.0(完全に平常)〜1.0(差し迫った危機) "
-              "で採点するにゃ。慢性的な状態は『平常運転』として 0 に近く、今日 新たに急性悪化した場合のみ高得点にゃ。"
+    prompt = (f"あなたは地球規模の破滅リスクの専門アナリストにゃ。『{label}』だけを担当するにゃ。"
+              "採点するのは『この要因が今日 人類絶滅(世界の終焉)を引き起こす切迫度』にゃ。極めて厳格に:\n"
+              "・進行中の戦争・紛争・対立・流行・AI開発・異常気象は、どれほど深刻でも『人類絶滅』ではない → 0.05〜0.15 にするにゃ。\n"
+              "・0.3以上を付けてよいのは、今日まさに全人類規模の絶滅へ直結する急性事態(全面核戦争の発射命令、致死率"
+              "極めて高いパンデミックの世界的制御不能、AGIの敵対的暴走、確認された衝突天体など)が起きた時だけにゃ。\n"
+              "・最新ニュースを深く分析しても、絶滅レベルでなければ低く(0.05〜0.15)採点にゃ。ほとんどの日は低いにゃ。\n"
               'JSONだけ返すにゃ: {"a":0.0,"note":"根拠(日本語25字)"}')
     try:
         r = client.models.generate_content(model=model, contents=prompt,

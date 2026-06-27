@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=VT323&display=swap" rel="stylesheet">
 <style>
-  :root{--g:#33ff88;--gd:rgba(51,255,136,.55);--gf:rgba(51,255,136,.22);--r:#ff4444;--rd:rgba(255,68,68,.6);--bg:#020403;}
+  :root{--g:#33ff88;--gd:rgba(51,255,136,.55);--gf:rgba(51,255,136,.22);--r:#ff4444;--rd:rgba(255,68,68,.6);--bg:#020403;--amber:#e0902e;}
   *{box-sizing:border-box} html,body{height:100%;margin:0}
   body{background:var(--bg);color:var(--g);font-family:'Fira Code',ui-monospace,monospace;font-size:12.5px;
     overflow:hidden;display:flex;flex-direction:column;padding:10px 14px;user-select:none;text-shadow:0 0 2px rgba(51,255,136,.4)}
@@ -94,6 +94,31 @@
   .procat .pn{font-size:11px;color:var(--g)}
   .proagg{width:100%;text-align:center;margin-top:6px;font-size:12px;color:var(--gd)}
   .proagg b{font-family:'VT323',monospace;font-size:1.7rem;color:var(--g);vertical-align:middle}
+  /* PRO = MAGI console layout */
+  #view-pro{align-items:center}
+  .magi-console{position:relative;width:640px;max-width:96%;height:400px;margin:6px auto 28px}
+  .magi-cell{position:absolute;border:2px solid var(--amber);background:rgba(18,11,3,.5);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:5px;z-index:2}
+  .magi-cell .mn{font-size:13px;font-weight:600;color:var(--amber);letter-spacing:.04em}
+  .magi-cell .ms{font-size:8.5px;color:var(--gd)}
+  .magi-cell img{width:60px;height:auto;margin:1px 0}
+  .magi-cell .mp{font-family:'VT323',monospace;font-size:1.7rem;color:var(--g);line-height:.85}
+  .magi-cell .mv{font-size:8px;color:var(--gd);line-height:1.25}
+  .mc-balt{top:0;left:50%;transform:translateX(-50%);width:32%;height:52%}
+  .mc-casp{bottom:0;left:1%;width:35%;height:44%}
+  .mc-melc{bottom:0;right:1%;width:35%;height:44%}
+  .magi-lines{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+  .magi-lines path{stroke:var(--amber);stroke-width:2;fill:none}
+  .magi-mid{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);text-align:center;z-index:3}
+  .magi-mid .mt{font-family:'VT323',monospace;font-size:1.9rem;color:var(--amber);letter-spacing:.04em;line-height:.9}
+  .magi-mid .mo{font-size:8.5px;color:var(--amber);letter-spacing:.3em}
+  .magi-final{position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);white-space:nowrap;font-size:12px;color:var(--gd)}
+  .magi-final b{font-family:'VT323',monospace;font-size:1.5rem;color:var(--g);vertical-align:middle}
+  /* expandable factor details */
+  .scnbox{max-height:186px;overflow-y:auto}
+  .frow{cursor:pointer} .frow:hover .fn{color:var(--g)}
+  .fdet{display:none;font-size:9px;color:var(--gd);padding:2px 0 4px 6px;margin:0 0 3px 5px;border-left:1px solid var(--gf);line-height:1.5}
+  .fdet.open{display:block}
   #view-ultra{display:none;flex-direction:column;align-items:center;width:100%}
   .ugrid{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;width:100%}
   .ucat{text-align:center;font-size:8px}
@@ -117,7 +142,7 @@
     <div class="ml-pos" data-mode="ultra">ULTRA</div>
   </div>
   <div class="top">
-    <div class="weclogo-wrap"><span class="weclogo">WEC</span><span class="wecsub">WORLD ENDING CAT<br><span class="biosline">BIOS v1.0 · 640K OK · (C)1998 WIRED</span></span></div>
+    <div class="weclogo-wrap"><span class="weclogo">WEC</span><span class="wecsub">WORLD ENDING CAT<br><span class="biosline">BIOS v1.0 · 640K OK · (C)2026 WIRED</span></span></div>
     <div>CONNECTION: <b>PSYCHIC NETWORK</b> &nbsp;·&nbsp; <span id="clock">--:--:--</span></div>
   </div>
 
@@ -126,7 +151,7 @@
     <div class="col side">
       <div class="box">
         <div class="bt">- USER -</div>
-        <div class="mini">USER: LAIN<br>ACCESS LVL: OBSERVER<br>NODE: Wired-01<br>DATE: 1998/07/24</div>
+        <div class="mini">USER: LAIN<br>ACCESS LVL: OBSERVER<br>NODE: Wired-01<br>DATE: <span id="udate">----/--/--</span></div>
       </div>
       <div class="box menu">
         <div class="bt">- MAIN MENU -</div>
@@ -140,7 +165,7 @@
         <div class="row"><span>UPLINK</span><b>128.0.0.1</b></div>
         <div class="row bad"><span>DATA FLOW</span><b id="flow">UNSTABLE</b></div>
       </div>
-      <div class="replay" id="replay">▶ ARCHIVE REPLAY: 1998.06.25 / M7.2 震度6強</div>
+      <div class="replay" id="replay">▶ ARCHIVE REPLAY: 2026.06.25 / M7.2 震度6強</div>
       <div class="box" style="flex:0 0 auto">
         <div class="bt">- LOG STREAM -</div>
         <div class="log" id="log" style="max-height:92px;overflow:hidden"><div>[--:--:--] 接続を待機中…</div></div>
@@ -207,7 +232,9 @@
 <script>
 const $=id=>document.getElementById(id);
 const two=n=>String(n).padStart(2,'0');
-setInterval(()=>{const d=new Date();$('clock').textContent=`${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;},1000);
+setInterval(()=>{const d=new Date();const ds=`${d.getFullYear()}/${two(d.getMonth()+1)}/${two(d.getDate())}`;
+  $('clock').textContent=`${ds} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  const u=$('udate');if(u)u.textContent=ds;},1000);
 setInterval(()=>{$('cur').textContent=$('cur').textContent==='_'?' ':'_';},600);
 
 function logLine(msg,red){const l=$('log'),d=new Date();const e=document.createElement('div');
@@ -245,7 +272,7 @@ function countUp(to,hi){const el=$('prob');let c=0,s=Math.max(0.1,to/22);
 async function pull(replay){
   if(busy)return;busy=true;$('flow').textContent='ESTIMATING';
   $('prob').innerHTML='<span style="font-size:1.4rem">CALC…</span>';$('warn').textContent='';
-  logLine(replay?'アーカイブ再生: 1998.06.25 M7.2 震度6強':'接続が確立されました');
+  logLine(replay?'アーカイブ再生: 2026.06.25 M7.2 震度6強':'接続が確立されました');
   logLine('予測モデルを初期化中…');logLine('16系統の観測ノードを照会中…');
   $('feed').innerHTML='接続中… 観測ノードを同期しています…<br>世界はすでに終わっている';
   const d=await getDoom(replay);const pct=d.probability||0;const hi=pct>=15,mid=pct>=6;
@@ -256,11 +283,12 @@ async function pull(replay){
   $('warn').style.color = hi?'var(--r)':mid?'#ffcc55':'var(--gd)';
   $('flow').textContent = hi?'CRITICAL':mid?'ELEVATED':'STABLE'; $('flow').parentElement.className='row'+(hi?' bad':'');
   // SCENARIO ANALYSIS: real factor breakdown (each factor's share of total risk)
-  const fs=(d.factors||[]).filter(f=>f.contribution>0.0004);
-  const tot=fs.reduce((a,f)=>a+f.contribution,0)||1;
-  const active=(d.factors||[]).filter(f=>f.a>0.03).length;
-  $('scen').innerHTML=`<div class="row" style="color:var(--gd)"><span>ACTIVE / TOTAL</span><b>${active} / ${(d.factors||[]).length}</b></div>`
-    + fs.slice(0,7).map(f=>{const sh=f.contribution/tot*100;return `<div class="frow"><span class="fn">${f.label}</span><span class="fbarw"><i class="fbar" style="width:${Math.min(100,sh)}%"></i></span><b>${sh.toFixed(1)}%</b></div>`;}).join('');
+  const allf=(d.factors||[]); const tot=allf.reduce((a,f)=>a+f.contribution,0)||1;
+  const active=allf.filter(f=>f.a>0.03).length; const KIND={hard:'実データ',gemini:'AI深層分析',anchor:'固定値'};
+  $('scen').innerHTML=`<div class="row" style="color:var(--gd)"><span>ACTIVE/TOTAL (行クリックで詳細)</span><b>${active} / ${allf.length}</b></div>`
+    +'<div class="scnbox">'+allf.map(f=>{const sh=f.contribution/tot*100;
+      return `<div class="frow" onclick="this.nextElementSibling.classList.toggle('open')"><span class="fn">${f.label}</span><span class="fbarw"><i class="fbar" style="width:${Math.min(100,sh)}%"></i></span><b>${sh.toFixed(1)}%</b></div>`
+        +`<div class="fdet">異常度 a=${f.a.toFixed(2)} / 深刻度 w=${f.w.toFixed(2)} / 寄与 ${f.contribution.toFixed(3)}<br>種別: ${KIND[f.kind]||f.kind}${f.note?(' — '+String(f.note).replace(/</g,'')):''}</div>`;}).join('')+'</div>';
   const al=$('alert');
   if(hi){al.className='box alert';$('alertbody').innerHTML='コード: 0xFF0021<br>異常な上昇を検出<br>観測を継続しています。';}
   else{al.className='box alert calm';$('alertbody').innerHTML='コード: 0x0000<br>状態: 正常範囲<br>観測を継続しています。';}
@@ -293,16 +321,18 @@ function setMode(m){
 document.querySelectorAll('.ml-pos').forEach(p=>p.addEventListener('click',()=>setMode(p.dataset.mode)));
 
 const CATIMG='assets/wired_cat.png';
-const SEAL={mizaru:'EYES SEALED · 見ざる',kikazaru:'EARS SEALED · 聞かざる',iwazaru:'MOUTH SEALED · 言わざる'};
+const SEAL2={mizaru:'見ざる · EYES',kikazaru:'聞かざる · EARS',iwazaru:'言わざる · MOUTH'};
+const IMGOF={mizaru:'eyes',kikazaru:'ears',iwazaru:'mouth'};
+function magiLayout(cats){
+  const by={}; (cats||[]).forEach(c=>by[c.id]=c);
+  const cell=(id,cls,name)=>{const c=by[id]||{};return `<div class="magi-cell ${cls}"><div class="mn">${name}</div><div class="ms">${SEAL2[id]}</div><img src="assets/wired_${IMGOF[id]}.png"><div class="mp">${c.probability!=null?c.probability+'%':'…'}</div><div class="mv">${c.top?('主要因 '+c.top):'演算中…'}</div></div>`;};
+  return `<div class="magi-console">${cell('kikazaru','mc-balt','BALTHASAR·2')}${cell('iwazaru','mc-casp','CASPER·3')}${cell('mizaru','mc-melc','MELCHIOR·1')}<svg class="magi-lines" viewBox="0 0 640 400" preserveAspectRatio="none"><path d="M320 208 L320 230 M236 238 L302 224 M404 238 L338 224"/></svg><div class="magi-mid"><div class="mt">MAGI·01</div><div class="mo">ORIGINAL</div></div><div class="magi-final" id="magifinal"></div></div>`;
+}
 async function runPro(){
-  const v=$('view-pro');
-  v.innerHTML='<div class="proagg">三賢猫が深層思考中にゃ… (deep thinking ×3)</div>'+
-    ['mizaru','kikazaru','iwazaru'].map(id=>`<div class="procat"><div class="seal">${SEAL[id]}</div><img src="${CATIMG}"><div class="pp">…</div><div class="pn">${id}</div><div class="pv">演算中…</div></div>`).join('');
+  const v=$('view-pro'); v.innerHTML=magiLayout(null);
   let d; try{d=await fetch('/api/pro').then(r=>r.json());}catch(e){return;}
-  v.innerHTML=d.cats.map(c=>`<div class="procat"><div class="seal">${SEAL[c.id]||c.label}</div><img src="${CATIMG}">
-    <div class="pp">${c.probability}<span style="font-size:1rem">%</span></div><div class="pn">${c.label} · ${c.magi}</div>
-    <div class="pv">主要因: ${c.top}</div></div>`).join('')
-    +`<div class="proagg">合議 最終: <b>${d.final}%</b> &nbsp; 合議幅 ${d.spread}pt · ${d.consensus} &nbsp;|&nbsp; PRO = 全17因子 + 深層思考</div>`;
+  v.innerHTML=magiLayout(d.cats);
+  $('magifinal').innerHTML=`MAGI 合議 最終 <b>${d.final}%</b> · 合議幅 ${d.spread}pt · ${d.consensus}`;
 }
 async function runUltra(){
   const v=$('view-ultra');
