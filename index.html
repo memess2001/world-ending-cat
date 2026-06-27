@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>終末スロット招き猫 🐾 Doomsday Maneki-neko</title>
+<style>
+  :root{
+    --cat: url("assets/style_showa.png");
+    --gold:#d8b15a; --gold-2:#f3d98a; --ink:#2a1d10; --red:#b23a2e; --cream:#f4e9d2;
+    /* belly TV-screen overlay position (% of the cat image box) — tuned to the art */
+    --belly-top:66%; --belly-left:50%; --belly-w:31%;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","PingFang SC",system-ui,sans-serif;
+    background:radial-gradient(1100px 560px at 50% -8%, #4a3320 0%, #2a1c10 55%, #160e07 100%);
+    color:var(--cream); display:flex; flex-direction:column; align-items:center; padding:22px 16px 48px;
+  }
+  h1{font-size:1.4rem; margin:.2rem 0 .1rem; text-align:center; color:var(--gold-2); letter-spacing:.03em}
+  .sub{color:#cBb289; color:#c9b289; font-size:.8rem; margin-bottom:16px; text-align:center}
+
+  .machine{position:relative; width:360px; max-width:92vw}
+  .cat{width:100%; height:auto; display:block; filter:drop-shadow(0 16px 28px rgba(0,0,0,.5))}
+
+  /* big probability on the belly TV screen */
+  .belly{
+    position:absolute; left:var(--belly-left); top:var(--belly-top); transform:translate(-50%,-50%);
+    width:var(--belly-w); display:flex; flex-direction:column; align-items:center; line-height:1;
+    pointer-events:none; text-align:center;
+  }
+  .pctNum{font-weight:800; font-size:2.2rem; color:#7a2018; font-variant-numeric:tabular-nums;
+    text-shadow:0 1px 0 rgba(255,255,255,.35);}
+  .pctNum .u{font-size:1.1rem}
+  .pctlabel{font-size:.52rem; color:#6b4a25; margin-top:1px; letter-spacing:.04em}
+
+  /* clickable paw lever (over the raised paw, top-left of the art) */
+  .paw{position:absolute; left:5%; top:13%; width:26%; height:24%; cursor:pointer; border-radius:14px;}
+  .machine.armed .paw{animation:pawhint 1.7s ease-in-out infinite}
+  @keyframes pawhint{0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)}}
+  .machine.pulling{animation:shake .4s ease}
+  @keyframes shake{0%,100%{transform:none} 25%{transform:rotate(-1.2deg) translateY(2px)} 75%{transform:rotate(1.2deg)}}
+
+  /* reel strip below the cat */
+  .reelbar{margin-top:14px; display:flex; gap:8px; align-items:center; justify-content:center;
+    background:linear-gradient(#3a2616,#241608); border:2px solid var(--gold); border-radius:16px;
+    padding:10px 14px; box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06)}
+  .reel{width:52px; height:58px; border-radius:10px; background:linear-gradient(#0e0c09,#2a231a);
+    border:1.5px solid #5a4424; overflow:hidden; position:relative; box-shadow:inset 0 6px 10px rgba(0,0,0,.6)}
+  .reel .strip{position:absolute; left:0; top:0; width:100%; display:flex; flex-direction:column; align-items:center}
+  .reel .cell{height:58px; display:flex; align-items:center; justify-content:center; font-size:28px; line-height:1}
+  .reel.spinning .strip{animation:spin .45s linear infinite}
+  @keyframes spin{from{transform:translateY(0)} to{transform:translateY(-290px)}}
+
+  .cta{margin-top:16px; background:linear-gradient(var(--gold-2),var(--gold)); color:#3a2408; border:none;
+    font-weight:800; font-size:1rem; padding:12px 28px; border-radius:30px; cursor:pointer;
+    box-shadow:0 4px 0 #9c7320, 0 8px 16px rgba(0,0,0,.4); letter-spacing:.04em}
+  .cta:active{transform:translateY(3px); box-shadow:0 1px 0 #9c7320}
+  .cta[disabled]{opacity:.5; cursor:wait}
+
+  .readout{margin-top:18px; width:360px; max-width:92vw; display:flex; flex-direction:column; gap:10px}
+  .card{background:#241a10; border:1px solid #46341f; border-radius:14px; padding:12px 14px}
+  .quote{font-size:1rem; line-height:1.65; min-height:1.6em; color:#f6ecd6}
+  .signals{font-size:.72rem; color:#bcd9c0; font-family:ui-monospace,Menlo,monospace; line-height:1.5}
+  .tip{font-size:.78rem; color:#f0cf8f} .tip b{color:#fff}
+  .verdict{display:flex; gap:8px; flex-wrap:wrap; font-size:.76rem; color:#d7bd97}
+  .chip{background:#33240f; border:1px solid #5a4424; border-radius:20px; padding:3px 10px}
+  .foot{margin-top:20px; font-size:.66rem; color:#8a7a5f; text-align:center; max-width:360px; line-height:1.6}
+  .nav{position:fixed; top:12px; right:16px; z-index:50; font-size:11px; letter-spacing:.08em; color:#8a7a5f}
+  .nav a{color:#bfae8a; text-decoration:none; margin-left:8px}
+  .nav a.on{color:var(--gold-2)}
+</style>
+</head>
+<body>
+  <div class="nav">STYLE:<a href="/" class="on">SHOWA</a><a href="/lain.html">LAIN</a><a href="/ps2.html">PS2</a><a href="/term.html">端末</a><a href="/magi.html">MAGI</a><a href="/wired.html">WIRED</a></div>
+  <h1>終末スロット招き猫</h1>
+  <div class="sub">今日、世界が終わる確率を、招き猫が真剣に占うにゃ 🐾</div>
+
+  <div class="machine armed" id="machine">
+    <img class="cat" src="assets/style_showa.png" alt="招き猫スロットマシン">
+    <div class="belly">
+      <div class="pctNum"><span id="pctNum">--</span><span class="u">%</span></div>
+      <div class="pctlabel">本日の終末確率</div>
+    </div>
+    <div class="paw" id="paw" title="レバーを引くにゃ"></div>
+  </div>
+
+  <div class="reelbar" id="reels">
+    <div class="reel" data-set="disaster"><div class="strip"></div></div>
+    <div class="reel" data-set="region"><div class="strip"></div></div>
+    <div class="reel" data-set="severity"><div class="strip"></div></div>
+  </div>
+
+  <button class="cta" id="pull">🐾 レバーを引く</button>
+
+  <div class="readout">
+    <div class="card quote" id="quote">招き猫はまだ眠っているにゃ… レバーを引いて起こすにゃ</div>
+    <div class="card signals" id="signals">🐾 猫の調査: まだ調べてないにゃ</div>
+    <div class="card tip" id="tip"><b>本日の防災Tip:</b> <span id="tipText">家具の固定、確認したことある？</span></div>
+    <div class="card verdict" id="verdict"></div>
+  </div>
+
+  <div class="foot">
+    ※ これはジョークアプリにゃ。確率は招き猫(Gemini)が実データを参考に勝手に占ったものにゃ。
+    本気の防災は気象庁・自治体の情報を見るにゃ。
+  </div>
+
+<script>
+const SETS = {
+  disaster: ['☄️','🌋','🌊','🦠','🤖','👽','⚡','🔆','🧟','🌀'],
+  region:   ['🗼','🌏','🌌','🗾','🏙️','🌐'],
+  severity: ['🐾','😼','😾','🙀','💥','☠️'],
+};
+function fillStrips(){
+  document.querySelectorAll('.reel').forEach(reel=>{
+    const set = SETS[reel.dataset.set];
+    reel.querySelector('.strip').innerHTML =
+      Array.from({length:12}, ()=>`<div class="cell">${set[Math.floor(Math.random()*set.length)]}</div>`).join('');
+  });
+}
+fillStrips();
+function setReel(reel, symbol){ reel.querySelector('.strip').innerHTML = `<div class="cell">${symbol}</div>`; }
+
+const tipsFallback = ['家具の固定、確認したことある？','懐中電灯と水の場所、知ってるにゃ？',
+  'ハザードマップ、一度見ておくにゃ','スマホは充電しておくにゃ','非常持出袋、玄関にある？'];
+
+// ---- Real predictor: ask the Gemini backend; fall back to mock if offline. ----
+async function predictDoom(){
+  try{
+    const res = await fetch('/api/predict', {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    console.log('prediction source:', data.source);
+    return data;
+  }catch(e){ console.warn('backend unavailable, using mock:', e); return mockPredict(); }
+}
+async function mockPredict(){
+  await new Promise(r=>setTimeout(r,1200));
+  let p = Math.random()<0.18 ? 40+Math.floor(Math.random()*55) : Math.floor(Math.random()*22);
+  const mag=(4+Math.random()*3.4).toFixed(1), neo=Math.floor(Math.random()*4);
+  const idx=Math.min(5,Math.floor(p/17));
+  return {probability:p,
+    reels:{disaster:SETS.disaster[Math.floor(Math.random()*10)],region:SETS.region[Math.floor(Math.random()*6)],severity:SETS.severity[idx]},
+    quote: p<15?'今日は平和だにゃ。安心して二度寝するにゃ🐾':p<45?'宇宙がちょっとソワソワしてるにゃ…でもたぶん大丈夫にゃ':'小判より防災グッズを買っておくにゃ…冗談だにゃ、たぶん',
+    signals:`🐾 猫の調査: USGS最大M${mag} / NASA近地天体${neo}件 / 太陽 静か`,
+    tip: tipsFallback[Math.floor(Math.random()*tipsFallback.length)],
+    chips:[`🌋最大M${mag}`,`☄️近地天体${neo}件`,'🔆太陽 静か']};
+}
+
+const reels=document.querySelectorAll('.reel'), pull=document.getElementById('pull');
+const machine=document.getElementById('machine'), paw=document.getElementById('paw');
+let spinning=false;
+
+function countUp(to){
+  const el=document.getElementById('pctNum'); let cur=0; const step=Math.max(1,Math.round(to/24));
+  const t=setInterval(()=>{cur=Math.min(to,cur+step); el.textContent=cur; if(cur>=to)clearInterval(t);},28);
+}
+async function spin(){
+  if(spinning) return; spinning=true;
+  machine.classList.remove('armed'); machine.classList.add('pulling');
+  setTimeout(()=>machine.classList.remove('pulling'),400);
+  pull.disabled=true; pull.textContent='占い中にゃ…';
+  document.getElementById('pctNum').textContent='--';
+  reels.forEach(r=>r.classList.add('spinning'));
+  document.getElementById('quote').textContent='招き猫が宇宙に問い合わせているにゃ…🛰️';
+
+  const res = await predictDoom();
+  const order=['disaster','region','severity'];
+  for(let i=0;i<reels.length;i++){
+    await new Promise(r=>setTimeout(r,420));
+    const reel=[...reels].find(x=>x.dataset.set===order[i]);
+    reel.classList.remove('spinning'); setReel(reel, res.reels[order[i]]);
+  }
+  countUp(res.probability);
+  document.getElementById('quote').textContent=res.quote;
+  document.getElementById('signals').textContent=res.signals;
+  document.getElementById('tipText').textContent=res.tip;
+  document.getElementById('verdict').innerHTML=(res.chips||[]).map(c=>`<span class="chip">${c}</span>`).join('');
+  pull.disabled=false; pull.textContent='🐾 もう一度引く';
+  machine.classList.add('armed'); spinning=false;
+}
+pull.addEventListener('click', spin);
+paw.addEventListener('click', spin);
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.DS_Store
+*.tar.gz
+smoke_test.py
+probe_image.py
+generate_styles.py
+generate_magi.py

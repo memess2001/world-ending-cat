@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PS2 POLYGON // DOOMSDAY 招き猫</title>
+<script src="assets/three.min.js"></script>
+<style>
+  :root{ --txt:#a7adc0; --dim:#6a7080; --line:#2a2e3a; --acc:#8899ff; }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:#050508; color:var(--txt); font-family:'Courier New',ui-monospace,monospace;
+    overflow:hidden; display:flex; flex-direction:column; padding:14px; user-select:none}
+  header,footer{display:flex; justify-content:space-between; align-items:center; font-size:11px;
+    letter-spacing:.12em; opacity:.7}
+  header{border-bottom:1px solid var(--line); padding-bottom:8px}
+  footer{border-top:1px solid var(--line); padding-top:8px; margin-top:8px; gap:14px}
+
+  main{flex:1; position:relative; min-height:0; display:flex; justify-content:center; align-items:center}
+  #stage{position:relative; width:100%; height:100%; max-width:1000px; border:1px solid var(--line); background:#000;
+    overflow:hidden}
+  #stage canvas{image-rendering:pixelated; display:block}
+  .vignette{position:absolute; inset:0; pointer-events:none; z-index:5;
+    background:radial-gradient(circle, transparent 52%, rgba(0,0,0,.55) 100%);}
+  .scan{position:absolute; inset:0; pointer-events:none; z-index:6; opacity:.25;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.4) 2px 3px);}
+
+  .hud{position:absolute; z-index:7; font-size:11px; line-height:1.5; background:rgba(5,6,12,.7);
+    border:1px solid var(--line); padding:7px 9px; letter-spacing:.04em}
+  .hud.tl{top:12px; left:12px; color:#ff6a6a; border-color:rgba(255,60,60,.4); font-weight:bold}
+  .hud.feed{bottom:12px; left:12px; max-width:46%; color:var(--dim); font-size:10px}
+  .hud.diag{top:12px; right:12px; color:var(--dim); text-align:right; font-size:10px}
+
+  .msg{margin-top:10px; border:1px solid var(--line); background:#0a0b12; padding:8px 11px; font-size:12px;
+    line-height:1.6; min-height:3.2em}
+  .msg .tag{color:var(--acc); font-weight:bold}
+  .msg .tip{color:var(--dim); font-size:10px; margin-top:3px}
+
+  .lever{border:1px solid #4a4f60; background:#11131a; color:#fff; font-family:inherit; font-size:12px;
+    letter-spacing:.1em; padding:8px 16px; cursor:pointer}
+  .lever:hover{background:#1c1f29} .lever:active{transform:scale(.96)} .lever:disabled{opacity:.5;cursor:wait}
+  .nav{font-size:10px; letter-spacing:.1em; opacity:.85}
+  .nav a{color:var(--dim); text-decoration:none; margin-left:8px}
+  .nav a.on{color:var(--acc)}
+</style>
+</head>
+<body>
+  <header>
+    <div>NTSC-J // SLUS-2026 // P_NEKO.ELF</div>
+    <div id="clock">MEMORY CARD [SLOT 1] // READY</div>
+  </header>
+
+  <main>
+    <div id="stage">
+      <div class="hud tl" id="sysbox">[!] DOOM_IDX: --</div>
+      <div class="hud diag">POLY: 312<br>FILTER: NEAREST<br>AA: OFF<br>route: GEMINI_3.5_FLASH<br>host: VERTEX // hacktokyo</div>
+      <div class="hud feed" id="feed">&gt; insert disc &amp; pull lever to query the doomsday oracle</div>
+      <div class="vignette"></div>
+      <div class="scan"></div>
+    </div>
+  </main>
+
+  <div class="msg"><span class="tag">MESSAGE ▶</span> <span id="quote">…awaiting transmission</span>
+    <div class="tip" id="tip"></div></div>
+
+  <footer>
+    <div>©2001 SONY P_NEKO // EMULATION MODE</div>
+    <div class="nav">STYLE:<a href="/">SHOWA</a><a href="/lain.html">LAIN</a><a href="/ps2.html" class="on">PS2</a><a href="/term.html">端末</a><a href="/magi.html">MAGI</a><a href="/wired.html">WIRED</a></div>
+    <button class="lever" id="pull">[ ○ PULL LEVER ]</button>
+  </footer>
+
+<script>
+const CODE = {
+  disaster:{'☄️':'METEOR','🌋':'VOLCANO','🌊':'TSUNAMI','🦠':'VIRUS','🤖':'AI','👽':'CONTACT','⚡':'BLACKOUT','🔆':'SOLAR','🧟':'OUTBREAK','🌀':'STORM'},
+  region:{'🗼':'KANTO','🌏':'EARTH','🌌':'GALAXY','🗾':'NIPPON','🏙️':'TOKYO','🌐':'WORLD'},
+  severity:{'🐾':'SAFE','😼':'MINOR','😾':'NOTICE','🙀':'WARNING','💥':'CRITICAL','☠️':'TERMINAL'},
+};
+const POOL={disaster:Object.values(CODE.disaster),region:Object.values(CODE.region),severity:Object.values(CODE.severity)};
+const map=(s,e)=>CODE[s][e]||String(e||'----');
+
+// ---------- belly slot-machine texture (pixelated) ----------
+const cv=document.createElement('canvas'); cv.width=256; cv.height=256;
+const cx=cv.getContext('2d');
+function drawTex(pct, codes, status, col){
+  cx.fillStyle='#0b0c14'; cx.fillRect(0,0,256,256);
+  cx.strokeStyle='#00ff66'; cx.lineWidth=3; cx.strokeRect(8,8,240,240);
+  cx.fillStyle='#9fe1cb'; cx.font='bold 16px "Courier New"'; cx.fillText('DOOMSDAY.SYS',20,34);
+  // reels
+  const labels=codes||['----','----','----'];
+  for(let i=0;i<3;i++){ const x=18+i*74;
+    cx.fillStyle='#05080a'; cx.fillRect(x,48,68,34);
+    cx.strokeStyle='#2f6e4a'; cx.lineWidth=2; cx.strokeRect(x,48,68,34);
+    cx.fillStyle='#7CFFB0'; cx.font='bold 12px "Courier New"';
+    cx.fillText(String(labels[i]).slice(0,7), x+6, 70);
+  }
+  // big %
+  cx.fillStyle=col||'#ff2244'; cx.font='bold 70px Impact, "Arial Black", sans-serif';
+  cx.textAlign='center'; cx.fillText((pct==null?'--':pct)+'%',128,168); cx.textAlign='left';
+  // status bar
+  cx.fillStyle='#1a1410'; cx.fillRect(18,196,220,30);
+  cx.fillStyle='#ffcc00'; cx.font='bold 14px "Courier New"';
+  cx.fillText('STATUS: '+(status||'IDLE'),28,216);
+  tex.needsUpdate=true;
+}
+
+// ---------- three.js ----------
+const stage=document.getElementById('stage');
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x050508,0.06);
+const camera=new THREE.PerspectiveCamera(45, stage.clientWidth/stage.clientHeight, .1, 100);
+camera.position.set(0,0,5.2);
+const renderer=new THREE.WebGLRenderer({antialias:false});
+renderer.setPixelRatio(0.5);                       // chunky low-res buffer
+renderer.setSize(stage.clientWidth, stage.clientHeight);
+stage.appendChild(renderer.domElement);
+
+const tex=new THREE.CanvasTexture(cv);
+tex.minFilter=THREE.NearestFilter; tex.magFilter=THREE.NearestFilter;
+drawTex(null,['----','----','----'],'IDLE','#39d36a');
+
+const bodyMat=new THREE.MeshPhongMaterial({color:0x1a1a22, shininess:12, flatShading:true});
+const cat=new THREE.Group();
+const body=new THREE.Mesh(new THREE.SphereGeometry(1.25,8,6), bodyMat); cat.add(body);
+// ears
+[-0.55,0.55].forEach(sx=>{ const e=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.55,4),bodyMat);
+  e.position.set(sx,1.05,0.1); e.rotation.z=sx>0?-0.3:0.3; cat.add(e);});
+// belly screen
+const screen=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.15,0.4), new THREE.MeshBasicMaterial({map:tex}));
+screen.position.set(0,-0.15,0.92); cat.add(screen);
+// bell
+const bell=new THREE.Mesh(new THREE.OctahedronGeometry(0.2,0), new THREE.MeshPhongMaterial({color:0xccaa22,flatShading:true}));
+bell.position.set(0,0.55,1.05); cat.add(bell);
+// raised arm (lever)
+const arm=new THREE.Group();
+const upper=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,1.1,5), bodyMat); upper.position.y=0.55; arm.add(upper);
+const paw=new THREE.Mesh(new THREE.SphereGeometry(0.24,4,4), new THREE.MeshPhongMaterial({color:0xff33aa,flatShading:true}));
+paw.position.y=1.15; arm.add(paw);
+arm.position.set(1.35,0.05,0.2); cat.add(arm);
+scene.add(cat);
+
+scene.add(new THREE.AmbientLight(0x222233));
+const dir=new THREE.DirectionalLight(0x8899ff,1.6); dir.position.set(4,5,4); scene.add(dir);
+const rim=new THREE.DirectionalLight(0x4422aa,0.7); rim.position.set(-4,-2,2); scene.add(rim);
+
+// ---------- backend ----------
+const tips=['家具の固定を確認するにゃ','懐中電灯と水の場所を確認するにゃ','ハザードマップを見ておくにゃ','非常持出袋を玄関に置くにゃ'];
+async function predictDoom(){
+  try{ const r=await fetch('/api/predict',{cache:'no-store'}); if(!r.ok) throw 0; const d=await r.json();
+    console.log('source:',d.source); return d;
+  }catch(e){ const p=Math.random()<0.18?40+(Math.random()*55|0):(Math.random()*22|0), idx=Math.min(5,p/17|0);
+    const k=o=>Object.keys(o)[Math.random()*Object.keys(o).length|0];
+    return {probability:p,reels:{disaster:k(CODE.disaster),region:k(CODE.region),severity:Object.keys(CODE.severity)[idx]},
+      quote:'回線不安定…たぶん大丈夫にゃ',signals:'OFFLINE / mock',tip:tips[Math.random()*tips.length|0]};}
+}
+const COLOR=p=>p<30?'#39d36a':p<60?'#ffcc00':'#ff2244';
+
+let spinning=false, spinT=0;
+async function spin(){
+  if(spinning) return; spinning=true; spinT=0;
+  const btn=document.getElementById('pull'); btn.disabled=true; btn.textContent='[ ... LOADING ]';
+  document.getElementById('quote').textContent='接続中… 招き猫が線(ワイヤード)に問い合わせ中にゃ';
+  document.getElementById('tip').textContent=''; document.getElementById('sysbox').textContent='[!] DOOM_IDX: SCAN';
+  const start=performance.now();
+  const res=await predictDoom();
+  const wait=2600-(performance.now()-start); if(wait>0) await new Promise(r=>setTimeout(r,wait));
+  spinning=false; arm.rotation.z=0;
+  const codes=[map('disaster',res.reels.disaster),map('region',res.reels.region),map('severity',res.reels.severity)];
+  const sev=map('severity',res.reels.severity);
+  drawTex(res.probability,codes,sev,COLOR(res.probability));
+  document.getElementById('quote').textContent=res.quote||'';
+  document.getElementById('tip').textContent=res.tip?('SURVIVAL ▶ '+res.tip):'';
+  document.getElementById('feed').innerHTML='&gt; '+(res.signals||'').replace(/ \/ /g,'<br>&gt; ');
+  document.getElementById('sysbox').textContent='[!] DOOM_IDX: '+res.probability+'% // '+sev;
+  btn.disabled=false; btn.textContent='[ ○ PULL LEVER ]';
+}
+document.getElementById('pull').addEventListener('click',spin);
+renderer.domElement.addEventListener('click',()=>{ if(!spinning) spin(); });
+
+// ---------- loop (≈30fps PS2 cadence) ----------
+let last=0, flickAcc=0;
+function loop(t){
+  requestAnimationFrame(loop);
+  if(t-last<33) return; const dt=(t-last)/1000; last=t;
+  cat.rotation.y=Math.sin(t*0.0009)*0.32; cat.rotation.x=0.12;
+  if(spinning){
+    spinT+=dt; arm.rotation.z=Math.sin(spinT*22)*0.6-0.5;
+    flickAcc+=dt; if(flickAcc>0.08){ flickAcc=0;
+      drawTex((Math.random()*100|0), [POOL.disaster,POOL.region,POOL.severity].map(p=>p[Math.random()*p.length|0]),
+        'SCANNING', '#ff2244'); }
+  }
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(loop);
+
+window.addEventListener('resize',()=>{ camera.aspect=stage.clientWidth/stage.clientHeight;
+  camera.updateProjectionMatrix(); renderer.setSize(stage.clientWidth, stage.clientHeight); });
+</script>
+</body>
+</html>

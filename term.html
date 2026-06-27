@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>終末予測システム // COPLAND OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0a08; --panel:#13110d; --panel2:#171410; --line:#3a342c; --line2:#544c3f;
+    --txt:#d8d2c8; --dim:#8a857d; --faint:#6f6a63; --red:#c0473a; --grn:#83a05f;
+    --amber:#cBa35a; --amber:#c8a85a; --crt:#0c140e; --glow:#a7d6ab;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--bg); color:var(--txt); font-family:'Fira Code',ui-monospace,monospace;
+    font-size:13px; overflow:hidden; display:flex; flex-direction:column; padding:10px 14px; user-select:none}
+  /* global CRT scanlines + grain */
+  body::after{content:""; position:fixed; inset:0; z-index:9999; pointer-events:none; opacity:.5;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, rgba(0,0,0,.10) 1px 3px);
+    animation:flick 6s steps(40) infinite}
+  @keyframes flick{0%,96%{opacity:.5}97%{opacity:.32}100%{opacity:.48}}
+
+  .topbar,.botbar{display:flex; justify-content:space-between; align-items:center; font-size:11px;
+    letter-spacing:.06em; color:var(--dim)}
+  .topbar{border-bottom:1px solid var(--line); padding-bottom:7px}
+  .topbar b{color:var(--txt); font-weight:500}
+  .botbar{border-top:1px solid var(--line); padding-top:6px; margin-top:6px; font-size:10px}
+  .botbar .keys span{margin-right:16px} .botbar .keys b{color:var(--amber)}
+
+  main{flex:1; display:grid; grid-template-columns:240px 1fr 290px; gap:12px; min-height:0; margin-top:10px}
+  .col{display:flex; flex-direction:column; gap:10px; min-height:0; overflow:hidden}
+  .box{border:1px solid var(--line); background:var(--panel); padding:9px 11px}
+  .bt{font-size:11px; color:var(--dim); letter-spacing:.08em; border-bottom:1px solid var(--line); padding-bottom:5px; margin-bottom:7px}
+  .row{display:flex; justify-content:space-between; font-size:12px; margin:3px 0; color:var(--dim)}
+  .row b{color:var(--txt); font-weight:400}
+  .row.warn b{color:var(--red)} .row.ok b{color:var(--grn)}
+  .mini{font-size:10.5px; line-height:1.55; color:var(--faint)}
+  .mlog div{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+  .menu div{padding:5px 8px; font-size:12px; color:var(--dim); cursor:default; border-left:2px solid transparent}
+  .menu div.on{color:var(--txt); background:var(--panel2); border-left-color:var(--red)}
+
+  /* CENTER */
+  .stage{display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative}
+  .machine{position:relative; width:100%; max-width:440px}
+  .machine .cat{width:100%; height:auto; display:block; filter:saturate(.85) contrast(1.02)}
+  .machine.noimg .cat{display:none}
+  .machine.noimg{display:flex; justify-content:center}
+
+  .crt{position:absolute; left:50%; top:64%; transform:translate(-50%,-50%); width:34%;
+    display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; text-align:center}
+  .machine.noimg .crt{position:static; transform:none; width:380px; background:radial-gradient(120% 120% at 50% 30%, #0e1810, #06090a);
+    border:10px solid #1c1812; border-radius:10px; padding:22px 18px; box-shadow:inset 0 0 50px rgba(0,0,0,.85)}
+  .crtlabel{font-size:11px; letter-spacing:.18em; color:#86b88a}
+  .crtsub{font-size:9.5px; color:#5f8a63; margin-top:-2px}
+  .risk{font-family:'VT323',monospace; font-size:2.6rem; line-height:.8; color:var(--glow);
+    text-shadow:0 0 12px rgba(120,220,140,.55); margin:1px 0; font-variant-numeric:tabular-nums}
+  .ci{font-size:9px; color:#7fae84}
+  .scenrow{width:100%; max-width:420px; margin-top:14px}
+  .scenttl{font-size:10px; color:var(--dim); letter-spacing:.08em; margin-bottom:5px}
+  .scen{display:grid; grid-template-columns:repeat(3,1fr); gap:7px}
+  .stile{border:1px solid var(--line); background:var(--panel); padding:8px 4px; text-align:center}
+  .stile svg{width:20px; height:20px; color:var(--amber)}
+  .stile .p{font-family:'VT323',monospace; font-size:1.5rem; color:var(--txt); line-height:.9}
+  .stile .n{font-size:8.5px; color:var(--dim); line-height:1.1; margin-top:2px}
+
+  .lever{margin-top:14px; border:1px solid var(--line2); background:var(--panel2); color:var(--txt);
+    font-family:inherit; font-size:12px; letter-spacing:.12em; padding:9px 22px; cursor:pointer}
+  .lever:hover{background:#241f17} .lever:disabled{opacity:.5;cursor:wait}
+  .disc{font-size:9.5px; color:var(--faint); margin-top:10px; text-align:center; max-width:420px}
+
+  /* charts */
+  canvas{display:block; width:100%; image-rendering:auto}
+  .legend{display:flex; gap:12px; font-size:9px; color:var(--faint); margin-top:3px; justify-content:flex-end}
+  .legend i{display:inline-block; width:10px; height:0; border-top:1px solid var(--txt); vertical-align:middle; margin-right:3px}
+  .legend i.dot{border-top:1px dotted var(--dim)}
+
+  .nav{font-size:10px; letter-spacing:.1em} .nav a{color:var(--dim); text-decoration:none; margin-left:8px}
+  .nav a.on{color:var(--amber)}
+  @media(max-width:900px){ main{grid-template-columns:1fr} .col.side{display:none} }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div>終末予測システム <b>ver.0.7.2</b> &nbsp; 接続先:<b>サイキックネットワーク</b></div>
+    <div>COPLAND OS N.V. &nbsp;·&nbsp; <span id="clock">昭和57年 --:--:--</span></div>
+  </div>
+
+  <main>
+    <!-- LEFT -->
+    <div class="col side">
+      <div class="box menu">
+        <div class="bt">メインメニュー</div>
+        <div class="on">▶ 予測ダッシュボード</div><div>シナリオ分析</div><div>異常ログ</div>
+        <div>通信記録</div><div>観測データ</div><div>設定</div>
+      </div>
+      <div class="box" style="flex:1">
+        <div class="bt">システムログ</div>
+        <div class="mini mlog" id="log">
+          <div>[--:--:--] モデル初期化完了</div>
+          <div>[--:--:--] データストリーム待機</div>
+        </div>
+      </div>
+      <div class="box">
+        <div class="bt">システムステータス</div>
+        <div class="row"><span>ネットワーク遅延</span><b id="lat">-- ms</b></div>
+        <div class="row"><span>データ整合性</span><b id="integ">--%</b></div>
+        <div class="row"><span>観測ノード数</span><b id="nodes">--/512</b></div>
+        <div class="row ok"><span>電力供給</span><b>安定</b></div>
+      </div>
+      <div class="box">
+        <div class="bt">ユーザー情報</div>
+        <div class="mini">ID: observer_001<br>アクセスレベル: L2<br>セッション: <span id="sess">00:00:00</span></div>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="stage">
+      <div class="machine" id="machine">
+        <img class="cat" src="assets/style_term.png" alt="terminal" onerror="document.getElementById('machine').classList.add('noimg')">
+        <div class="crt">
+          <div class="crtlabel">終末確率(中央値)</div>
+          <div class="risk" id="risk">0.000</div>
+          <div class="ci">± <span id="ci">0.000</span></div>
+        </div>
+      </div>
+      <div class="scenrow"><div class="scenttl">主要シナリオ (上位3件) &nbsp;±68% 信頼区間</div><div class="scen" id="scen"></div></div>
+      <button class="lever" id="pull">⟳ 予測を実行 (PULL LEVER)</button>
+      <div class="disc">注意:本システムは確率的予測であり、絶対的な未来を示すものではありません。<br>
+        確率は招き猫(Gemini 3.5 Flash / Vertex AI)が実データを基に推論したものです。</div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col side">
+      <div class="box">
+        <div class="bt">確率の推移 (24h)</div>
+        <canvas id="trend" width="280" height="92"></canvas>
+        <div class="legend"><span><i></i>中央値</span><span><i class="dot"></i>信頼区間</span></div>
+      </div>
+      <div class="box">
+        <div class="bt">不確実性指標</div>
+        <div class="row"><span>エントロピー(情報量)</span><b id="ent">--</b></div>
+        <div class="row"><span>モデル分散</span><b id="mvar">--</b></div>
+        <div class="row"><span>パラメータ安定性</span><b id="pstab">--</b></div>
+        <div class="row"><span>外部ノイズ</span><b id="enoise">--</b></div>
+      </div>
+      <div class="box">
+        <div class="bt">観測データ品質</div>
+        <div class="row"><span>総合評価</span><b id="dq">--</b></div>
+        <div class="row"><span>欠損データ率</span><b id="miss">--%</b></div>
+        <div class="row"><span>ノイズレベル</span><b id="nlv">--</b></div>
+        <div class="row"><span>バイアス検出</span><b id="bias">--</b></div>
+      </div>
+      <div class="box" style="flex:1">
+        <div class="bt">システムメッセージ</div>
+        <div class="mini" id="sysmsg">観測データを待機しています。<br>レバーを引くと予測を開始します。<br><span id="anom"></span></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="botbar">
+    <div class="keys"><span><b>F1</b> ヘルプ</span><span><b>F2</b> ログ</span><span><b>F3</b> レポート</span><span><b>F5</b> 設定</span>
+      <span class="nav">STYLE:<a href="/">SHOWA</a><a href="/lain.html">LAIN</a><a href="/ps2.html">PS2</a><a href="/term.html" class="on">端末</a><a href="/magi.html">MAGI</a><a href="/wired.html">WIRED</a></span></div>
+    <div>SYSTEM OK &nbsp;|&nbsp; UPS &nbsp;|&nbsp; 60Hz</div>
+  </div>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="ic-vol" viewBox="0 0 24 24"><path d="M4 20 L12 6 L20 20" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 13h6" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="ic-comet" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11 L20 20" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="ic-tower" viewBox="0 0 24 24"><path d="M12 3 L7 21 M12 3 L17 21 M8.5 14h7 M9.6 10h4.8" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="ic-skull" viewBox="0 0 24 24"><circle cx="12" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="9.3" cy="9.3" r="1.2" fill="currentColor"/><circle cx="14.7" cy="9.3" r="1.2" fill="currentColor"/><path d="M9 18h6 M10.5 18v3 M13.5 18v3" stroke="currentColor" stroke-width="1.4"/></symbol>
+  <symbol id="ic-virus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 3v4 M12 17v4 M3 12h4 M17 12h4" stroke="currentColor" stroke-width="1.4"/></symbol>
+  <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 12h16 M12 4c3 3 3 13 0 16 M12 4c-3 3 -3 13 0 16" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+</defs></svg>
+
+<script>
+const ICON={'火山活動の激化':'ic-vol','地殻変動の活発化':'ic-vol','天体衝突':'ic-comet','通信インフラ崩壊':'ic-tower','地政学的危機':'ic-globe','未知のウイルス':'ic-virus'};
+const $=id=>document.getElementById(id);
+
+// ---- clock (Showa) + session ----
+const t0=Date.now();
+function two(n){return String(n).padStart(2,'0')}
+function tick(){ const d=new Date();
+  $('clock').textContent=`昭和${d.getFullYear()-1925}年 ${two(d.getMonth()+1)}.${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  const s=Math.floor((Date.now()-t0)/1000); $('sess').textContent=`${two(s/3600|0)}:${two((s/60|0)%60)}:${two(s%60)}`;
+}
+setInterval(tick,1000); tick();
+// idle status jitter
+setInterval(()=>{ $('lat').textContent=(18+Math.random()*12|0)+' ms'; },1700);
+// rare anomaly (good horror, not loud)
+setInterval(()=>{ if(Math.random()>0.94){ $('anom').textContent='> 観測されています_';
+  setTimeout(()=>{$('anom').textContent='';},2600);} },5000);
+
+function logLine(msg){ const l=$('log'); const d=new Date();
+  const e=document.createElement('div'); e.textContent=`[${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}] ${msg}`;
+  l.appendChild(e); while(l.children.length>7) l.removeChild(l.firstChild); }
+
+// ---- derive the scientific breakdown from the REAL signals ----
+function breakdown(d){
+  const r=d.raw||{}, gq=r.global_quake||{}, jq=r.japan_quake||{}, ast=r.asteroids||{}, sw=r.space_weather||{}, nw=r.doom_news||{};
+  const risk=Math.max(0,Math.min(1,(d.probability||0)/100));
+  const mag=gq.max_mag||0;
+  const w={
+    '地殻変動の活発化':Math.max(0,mag-3)*1.2+(jq.max_mag||0)*0.3+(gq.tsunami?1:0),
+    '天体衝突':(ast.hazardous?3:0)+Math.max(0,12-(ast.closest_ld??99))*0.3+(ast.count||0)*0.1,
+    '通信インフラ崩壊':(sw.max_scale||0)*1.6+(/^[MX]/.test(sw.flare||'')?1.6:0.3),
+    '地政学的危機':Math.min(4,(nw.count||0)*0.06),
+    '未知のウイルス':0.8,
+    '火山活動の激化':Math.max(0.6,mag*0.16),
+  };
+  const tot=Object.values(w).reduce((a,b)=>a+b,0)||1;
+  const scen=Object.entries(w).map(([n,v])=>({n,p:v/tot})).sort((a,b)=>b.p-a.p);
+  const sig=[gq,jq,ast,sw,nw];
+  const fails=sig.filter(s=>s.error||(s.max_mag===null&&'max_mag'in s)||(s.count===null&&'count'in s)).length;
+  const missing=+(fails/sig.length*100).toFixed(1);
+  const unc=Math.min(0.4,0.09+fails*0.05+Math.random()*0.02);
+  const ent=-Object.values(w).filter(v=>v>0).map(v=>v/tot).reduce((a,x)=>a+x*Math.log(x),0)/Math.log(Object.keys(w).length);
+  return {risk, ci:+(unc*0.23).toFixed(3), unc:+unc.toFixed(2), conf:+(1-unc).toFixed(2),
+    ent:+ent.toFixed(2), mvar:+(0.008+unc*0.05).toFixed(3), pstab:+(1-unc-0.06).toFixed(2),
+    enoise:+(0.1+missing/100).toFixed(2), scen, missing,
+    dq: missing<=0?'良好':missing<25?'普通':'要注意', nlv: unc<0.18?'低':unc<0.3?'中':'高',
+    nodes:128+Math.round((d.probability||0)*1.5)};
+}
+
+// ---- charts ----
+function synthTrend(risk){ const a=[]; let v=Math.max(.05,risk*0.5+0.12);
+  for(let i=0;i<48;i++){ v+=(risk-v)*0.05+(Math.random()-0.5)*0.03; v=Math.max(0,Math.min(1,v)); a.push(v);} a[47]=risk; return a; }
+function drawTrend(cv, series, ci){ const ctx=cv.getContext('2d'), W=cv.width, H=cv.height; ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(120,115,100,.25)'; ctx.lineWidth=1;
+  for(let g=0;g<=4;g++){const y=4+g*(H-8)/4; ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  const x=i=>i/(series.length-1)*W, y=v=>H-4-v*(H-8);
+  // CI band
+  ctx.strokeStyle='rgba(150,150,140,.35)'; ctx.setLineDash([2,2]); ctx.beginPath();
+  series.forEach((v,i)=>{const yy=y(Math.min(1,v+ci)); i?ctx.lineTo(x(i),yy):ctx.moveTo(x(i),yy);}); ctx.stroke();
+  ctx.beginPath(); series.forEach((v,i)=>{const yy=y(Math.max(0,v-ci)); i?ctx.lineTo(x(i),yy):ctx.moveTo(x(i),yy);}); ctx.stroke();
+  ctx.setLineDash([]);
+  // median
+  ctx.strokeStyle='#d8d2c8'; ctx.lineWidth=1.4; ctx.beginPath();
+  series.forEach((v,i)=>{ i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v)); }); ctx.stroke();
+}
+
+// ---- backend ----
+async function predict(){ try{ const r=await fetch('/api/predict',{cache:'no-store'}); if(!r.ok) throw 0;
+  return await r.json(); }catch(e){ const p=(Math.random()*22|0);
+  return {probability:p, quote:'回線不安定…', signals:'OFFLINE', tip:'', source:'offline',
+    raw:{global_quake:{max_mag:5+Math.random()*2},asteroids:{count:3,closest_ld:6,hazardous:true},space_weather:{max_scale:0,flare:'C1'},doom_news:{count:20},japan_quake:{max_mag:2.5}}}; } }
+
+// ---- risk convergence animation ----
+let riskTimer, cur=0;
+function converge(target){ clearInterval(riskTimer); let f=0;
+  riskTimer=setInterval(()=>{ f++; const n=(Math.random()-0.5)*Math.max(0,0.10-f*0.005);
+    cur+=(target-cur)*0.16+n; cur=Math.max(0,Math.min(1,cur)); $('risk').textContent=cur.toFixed(3);
+    if(f>44){clearInterval(riskTimer); cur=target; $('risk').textContent=target.toFixed(3);} },40); }
+
+function renderScen(scen){ const top=scen.slice(0,3);
+  $('scen').innerHTML=top.map(s=>`<div class="stile"><svg><use href="#${ICON[s.n]||'ic-comet'}"/></svg>
+    <div class="p">${s.p.toFixed(3)}</div><div class="n">${s.n}</div></div>`).join(''); }
+
+let busy=false;
+async function run(){ if(busy) return; busy=true;
+  const btn=$('pull'); btn.disabled=true; btn.textContent='⟳ 計算中…';
+  $('sysmsg').innerHTML='観測データを取得し、モデルを実行しています…<br><span id="anom"></span>';
+  logLine('予測モデル起動'); logLine('データストリーム接続');
+  // jitter risk while querying (model not converged)
+  clearInterval(riskTimer); riskTimer=setInterval(()=>{$('risk').textContent=(Math.random()).toFixed(3);},80);
+  const d=await predict();
+  const b=breakdown(d);
+  clearInterval(riskTimer);
+  logLine('観測ノード追加を検出'); logLine('パラメータ微調整');
+  converge(b.risk);
+  $('ci').textContent=b.ci.toFixed(3);
+  renderScen(b.scen);
+  $('ent').textContent=b.ent.toFixed(2); $('mvar').textContent=b.mvar.toFixed(3);
+  $('pstab').textContent=b.pstab.toFixed(2); $('enoise').textContent=b.enoise.toFixed(2);
+  $('dq').textContent=b.dq; $('miss').textContent=b.missing+' %'; $('nlv').textContent=b.nlv; $('bias').textContent='なし';
+  $('integ').textContent=(100-b.missing).toFixed(1)+'%'; $('nodes').textContent=b.nodes+'/512';
+  drawTrend($('trend'), synthTrend(b.risk), b.ci);
+  const sev = b.risk<0.3?'安定範囲':b.risk<0.6?'やや上昇':'高水準';
+  $('sysmsg').innerHTML=`> ${d.quote||''}<br><br>モデル評価: 終末確率は<b>${sev}</b>。不確実性は逐次低下します。`
+    + (d.tip?`<br><span style="color:var(--amber)">SURVIVAL ▶ ${d.tip}</span>`:'') + `<br><span id="anom"></span>`;
+  btn.disabled=false; btn.textContent='⟳ 再実行 (PULL LEVER)'; busy=false;
+}
+$('pull').addEventListener('click', run);
+// draw an initial empty trend
+drawTrend($('trend'), synthTrend(0.2), 0.04);
+</script>
+</body>
+</html>

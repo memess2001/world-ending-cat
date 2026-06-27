@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAGI 三猿 // 終末評議システム</title>
+<script src="assets/three.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#08090b;--panel:#11140f;--line:#33392c;--txt:#d6d8cc;--dim:#868c79;--amber:#c8a85a;
+    --red:#c0473a;--grn:#7faf6a;--glow:#a7d6ab;}
+  *{box-sizing:border-box} html,body{height:100%;margin:0}
+  body{background:var(--bg);color:var(--txt);font-family:'Fira Code',ui-monospace,monospace;font-size:13px;
+    overflow:hidden;display:flex;flex-direction:column;padding:10px 16px;user-select:none}
+  body::after{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.45;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,rgba(0,0,0,.10) 1px 3px)}
+  .top,.bot{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.06em;color:var(--dim)}
+  .top{border-bottom:1px solid var(--line);padding-bottom:7px} .top b{color:var(--txt);font-weight:500}
+  .bot{border-top:1px solid var(--line);padding-top:6px;margin-top:6px;font-size:10px}
+  main{flex:1;display:flex;flex-direction:column;min-height:0;margin-top:8px;gap:8px}
+  #stage{flex:1;min-height:0;position:relative;border:1px solid var(--line);background:radial-gradient(120% 120% at 50% 20%,#0e120c,#060707)}
+  #stage canvas{display:block;image-rendering:pixelated}
+  .vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle,transparent 55%,rgba(0,0,0,.5) 100%)}
+  .stitle{position:absolute;top:8px;left:12px;font-size:10px;color:var(--dim);letter-spacing:.1em}
+  .units{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .unit{border:1px solid var(--line);background:var(--panel);padding:8px 11px;position:relative;overflow:hidden}
+  .unit .nm{font-size:12px;color:var(--txt)} .unit .mg{font-size:9px;color:var(--dim);letter-spacing:.12em}
+  .unit .pr{font-family:'VT323',monospace;font-size:2.2rem;line-height:.9;color:var(--glow);margin:3px 0}
+  .unit .pr .u{font-size:.9rem} .unit .vd{font-size:10.5px;color:var(--dim);line-height:1.45;min-height:2.8em}
+  .unit .badge{position:absolute;top:8px;right:10px;font-size:8.5px;color:var(--red);border:1px solid var(--red);padding:1px 5px}
+  .agg{display:flex;align-items:center;gap:18px;border:1px solid var(--line);background:#0e0f0b;padding:10px 16px}
+  .agg .lab{font-size:11px;color:var(--dim);letter-spacing:.1em}
+  .agg .final{font-family:'VT323',monospace;font-size:3rem;line-height:.85;color:var(--glow);text-shadow:0 0 12px rgba(120,220,140,.5)}
+  .agg .final .u{font-size:1.1rem}
+  .agg .cons{font-size:14px;font-weight:500} .cons.ok{color:var(--grn)} .cons.mid{color:var(--amber)} .cons.bad{color:var(--red)}
+  .agg .sig{font-size:10px;color:var(--dim);flex:1;text-align:right;line-height:1.5}
+  .deliberate{border:1px solid var(--line);background:#171a12;color:var(--txt);font-family:inherit;font-size:13px;
+    letter-spacing:.14em;padding:10px;cursor:pointer;width:100%}
+  .deliberate:hover{background:#20241a} .deliberate:disabled{opacity:.5;cursor:wait}
+  .nav a{color:var(--dim);text-decoration:none;margin-left:8px} .nav a.on{color:var(--amber)}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div>終末評議システム <b>MAGI</b> &nbsp; 三賢猫合議モデル &nbsp; 接続先:<b>サイキックネットワーク</b></div>
+    <div>COPLAND OS N.V. &nbsp;·&nbsp; <span id="clock">--:--:--</span></div>
+  </div>
+
+  <main>
+    <div id="stage"><div class="stitle">MAGI SYSTEM // 見ざる・聞かざる・言わざる</div><div class="vig"></div></div>
+
+    <div class="units" id="units">
+      <div class="unit" data-i="0"><span class="badge">EYES SEALED</span><div class="nm">見ざる</div><div class="mg">MELCHIOR-01</div><div class="pr"><span class="v">--</span><span class="u">%</span></div><div class="vd">待機中…</div></div>
+      <div class="unit" data-i="1"><span class="badge">EARS SEALED</span><div class="nm">聞かざる</div><div class="mg">BALTHASAR-02</div><div class="pr"><span class="v">--</span><span class="u">%</span></div><div class="vd">待機中…</div></div>
+      <div class="unit" data-i="2"><span class="badge">MOUTH SEALED</span><div class="nm">言わざる</div><div class="mg">CASPER-03</div><div class="pr"><span class="v">--</span><span class="u">%</span></div><div class="vd">待機中…</div></div>
+    </div>
+
+    <div class="agg">
+      <div><div class="lab">最終終末確率(合議)</div><div class="final"><span id="final">--</span><span class="u">%</span></div></div>
+      <div><div class="lab">合議状態</div><div class="cons" id="cons">―</div></div>
+      <div class="sig" id="sig">三賢猫はまだ評議していません。<br>下のレバーで評議を開始します。</div>
+    </div>
+
+    <button class="deliberate" id="go">◉ 評議を開始する (CONVENE THE MAGI)</button>
+  </main>
+
+  <div class="bot">
+    <div>SYSTEM OK | 3-AGENT DELIBERATION | route: GEMINI_3.5_FLASH ×3 // VERTEX</div>
+    <div class="nav">STYLE:<a href="/">SHOWA</a><a href="/lain.html">LAIN</a><a href="/ps2.html">PS2</a><a href="/term.html">端末</a><a href="/magi.html" class="on">MAGI</a><a href="/wired.html">WIRED</a></div>
+  </div>
+
+<script>
+// ---- three.js: 3 low-poly MAGI cats ----
+const stage=document.getElementById('stage');
+const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x08090b,0.04);
+const camera=new THREE.PerspectiveCamera(42, stage.clientWidth/Math.max(1,stage.clientHeight), .1, 100);
+camera.position.set(0,0.35,6.5); camera.lookAt(0,-0.15,0);
+const renderer=new THREE.WebGLRenderer({antialias:false}); renderer.setPixelRatio(0.55);
+function size(){ renderer.setSize(stage.clientWidth, stage.clientHeight); camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight); camera.updateProjectionMatrix(); }
+stage.appendChild(renderer.domElement); size();
+
+const body=new THREE.MeshPhongMaterial({color:0x3a3a44,shininess:14,flatShading:true});
+const gold=new THREE.MeshPhongMaterial({color:0xb58b2a,flatShading:true});
+const seal=new THREE.MeshPhongMaterial({color:0x9a2a22,flatShading:true});
+const pawM=new THREE.MeshPhongMaterial({color:0xc0473a,flatShading:true});
+const eyeM=new THREE.MeshBasicMaterial({color:0x0a0a0a});
+
+function buildCat(cover){
+  const g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(1.05,8,6),body));
+  [-0.48,0.48].forEach(sx=>{const e=new THREE.Mesh(new THREE.ConeGeometry(0.26,0.46,4),body);e.position.set(sx,0.92,0.05);e.rotation.z=sx>0?-0.3:0.3;g.add(e);});
+  const bell=new THREE.Mesh(new THREE.OctahedronGeometry(0.15,0),gold);bell.position.set(0,0.42,0.92);g.add(bell);
+  // eyes if not sealed
+  if(cover!=='eyes'){[-0.27,0.27].forEach(sx=>{const ey=new THREE.Mesh(new THREE.SphereGeometry(0.07,6,6),eyeM);ey.position.set(sx,0.72,0.98);g.add(ey);});}
+  // sense seals
+  if(cover==='eyes'){const b=new THREE.Mesh(new THREE.BoxGeometry(1.25,0.32,0.18),seal);b.position.set(0,0.74,0.96);g.add(b);}
+  if(cover==='mouth'){const b=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.28,0.18),seal);b.position.set(0,0.4,1.0);g.add(b);}
+  if(cover==='ears'){[-0.5,0.5].forEach(sx=>{const b=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.5,0.34),seal);b.position.set(sx,0.86,0.15);g.add(b);});}
+  // arm (lever) - animatable
+  const arm=new THREE.Group();
+  const up=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.95,5),body);up.position.y=0.48;arm.add(up);
+  const paw=new THREE.Mesh(new THREE.SphereGeometry(0.19,4,4),pawM);paw.position.y=1.0;arm.add(paw);
+  arm.position.set(1.05,0,0.1);g.add(arm);g.userData.arm=arm;
+  return g;
+}
+const COVERS=['eyes','ears','mouth'];
+const XS=[-2.7,0,2.7];
+const cats=COVERS.map((c,i)=>{const g=buildCat(c);g.position.set(XS[i],-0.1,0);scene.add(g);return {g,arm:g.userData.arm,pull:false,pt:0,glow:0};});
+
+scene.add(new THREE.AmbientLight(0x232838));
+const d1=new THREE.DirectionalLight(0x9fb0e0,1.5);d1.position.set(3,5,5);scene.add(d1);
+const d2=new THREE.DirectionalLight(0x6a4aa0,0.6);d2.position.set(-4,-1,2);scene.add(d2);
+
+let last=0;
+function loop(t){ requestAnimationFrame(loop); if(t-last<33) return; const dt=(t-last)/1000; last=t;
+  cats.forEach((c,i)=>{ c.g.rotation.y=Math.sin(t*0.0005+i*2)*0.16;
+    if(c.pull){ c.pt+=dt; c.arm.rotation.z=Math.sin(c.pt*9)*0.7-0.5; if(c.pt>0.95){c.pull=false;c.arm.rotation.z=0;} }
+    if(c.glow>0){ c.g.position.y=-0.1+Math.sin(t*0.02)*0.04*c.glow; c.glow=Math.max(0,c.glow-dt*0.5); }
+  });
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(loop);
+window.addEventListener('resize',size);
+
+// ---- clock (faux Showa) ----
+const two=n=>String(n).padStart(2,'0');
+setInterval(()=>{const d=new Date();document.getElementById('clock').textContent=`昭和${d.getFullYear()-1925}年 ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;},1000);
+
+// ---- deliberation ----
+const units=[...document.querySelectorAll('.unit')];
+async function getMagi(){ try{const r=await fetch('/api/magi',{cache:'no-store'});if(!r.ok)throw 0;return await r.json();}
+  catch(e){return {final:0,spread:0,consensus:'通信途絶',cats:units.map((_,i)=>({label:['見ざる','聞かざる','言わざる'][i],prob:null,verdict:'(応答なし)'})),signals:'OFFLINE'};} }
+
+function setUnit(i,c){ const u=units[i];
+  u.querySelector('.pr .v').textContent=c.prob==null?'--':c.prob;
+  u.querySelector('.vd').textContent=c.verdict||''; cats[i].glow=1; }
+
+let busy=false;
+async function convene(){ if(busy)return; busy=true;
+  const btn=document.getElementById('go'); btn.disabled=true; btn.textContent='◉ 評議中… 三賢猫が演算しています';
+  units.forEach(u=>{u.querySelector('.pr .v').textContent='…';u.querySelector('.vd').textContent='演算中にゃ…';});
+  document.getElementById('final').textContent='--'; document.getElementById('cons').textContent='評議中';
+  document.getElementById('cons').className='cons';
+  document.getElementById('sig').textContent='三賢猫が各自のデータで終末確率を独立に演算しています…';
+  const d=await getMagi();
+  // reveal each cat in turn with an arm pull
+  for(let i=0;i<3;i++){ await new Promise(r=>setTimeout(r,700)); cats[i].pull=true; cats[i].pt=0; setUnit(i,d.cats[i]); }
+  await new Promise(r=>setTimeout(r,650));
+  document.getElementById('final').textContent=d.final;
+  const cons=document.getElementById('cons'); cons.textContent=d.consensus;
+  cons.className='cons '+(d.consensus==='全会一致'?'ok':d.consensus==='意見の相違'?'mid':'bad');
+  document.getElementById('sig').innerHTML='🐾 観測: '+(d.signals||'')+`<br>合議幅(spread): ${d.spread} pt`;
+  btn.disabled=false; btn.textContent='◉ 再評議する (CONVENE AGAIN)'; busy=false;
+}
+document.getElementById('go').addEventListener('click',convene);
+renderer.domElement.addEventListener('click',()=>{if(!busy)convene();});
+</script>
+</body>
+</html>
