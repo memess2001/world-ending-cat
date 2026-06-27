@@ -77,11 +77,45 @@
     background:repeating-linear-gradient(0deg,var(--g) 0 2.5px,rgba(0,0,0,0) 2.5px 5px);
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
   .wecsub{font-size:10px;color:var(--g);line-height:1.4} .biosline{color:var(--gd);font-size:9px}
+  /* ---- Stage 2: mode lever + PRO/ULTRA views + blue theme ---- */
+  .modelever{position:fixed;top:5px;left:50%;transform:translateX(-50%);z-index:10001;display:flex;
+    border:1px solid var(--gf);background:rgba(2,8,5,.9);font-size:10px;letter-spacing:.1em}
+  .ml-pos{padding:5px 15px;cursor:pointer;color:var(--gd);border-right:1px solid var(--gf);position:relative}
+  .ml-pos:last-child{border-right:none}
+  .ml-pos.on{color:var(--bg);background:var(--g);font-weight:500}
+  .ml-pos.on::after{content:"▲";position:absolute;left:50%;transform:translateX(-50%);bottom:-11px;color:var(--g);font-size:8px}
+  body.focus .modelever{display:none}
+  #view-pro{display:none;gap:16px;justify-content:center;align-items:flex-start;flex-wrap:wrap;width:100%}
+  .procat{width:190px;text-align:center}
+  .procat img{width:140px;height:auto;filter:drop-shadow(0 0 6px rgba(51,255,136,.25))}
+  .procat .seal{font-size:9px;color:var(--r);border:1px solid var(--rd);padding:1px 6px;display:inline-block;margin-bottom:3px}
+  .procat .pp{font-family:'VT323',monospace;font-size:2.1rem;line-height:.9;color:var(--g)}
+  .procat .pv{font-size:10px;color:var(--gd);min-height:2.4em;line-height:1.4}
+  .procat .pn{font-size:11px;color:var(--g)}
+  .proagg{width:100%;text-align:center;margin-top:6px;font-size:12px;color:var(--gd)}
+  .proagg b{font-family:'VT323',monospace;font-size:1.7rem;color:var(--g);vertical-align:middle}
+  #view-ultra{display:none;flex-direction:column;align-items:center;width:100%}
+  .ugrid{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;width:100%}
+  .ucat{text-align:center;font-size:8px}
+  .ucat img{width:100%;height:auto;max-width:72px;filter:drop-shadow(0 0 3px rgba(51,255,136,.3))}
+  .ucat .uf{color:var(--g);font-size:8.5px;line-height:1.1;height:2.2em;overflow:hidden}
+  .ucat .ubar{height:3px;background:var(--gf);margin:2px 0} .ucat .ubar>i{display:block;height:100%;width:0;background:var(--g);transition:width .3s}
+  .ucat .ua{font-family:'VT323',monospace;font-size:1rem;color:var(--g)}
+  .uhead{font-size:12px;color:var(--gd);margin:4px 0 12px;text-align:center}
+  .uhead b{font-family:'VT323',monospace;font-size:2.1rem;color:var(--g);vertical-align:middle}
+  body.ultra{--g:#56b0ff;--gd:rgba(86,176,255,.62);--gf:rgba(86,176,255,.22);text-shadow:0 0 3px rgba(86,176,255,.45)}
+  body.ultra .cat,body.ultra .procat img,body.ultra .ucat img{filter:hue-rotate(80deg) saturate(1.25) brightness(1.08) drop-shadow(0 0 8px rgba(86,176,255,.6))}
+  body.ultra::after{background:repeating-linear-gradient(0deg,rgba(86,176,255,.03) 0 1px,rgba(0,0,0,.18) 1px 3px)}
   @media(max-width:920px){main{grid-template-columns:1fr}.col.side{display:none}}
 </style>
 </head>
 <body class="focus">
   <div class="lightsout" id="lights"><span id="lightslabel">▲ 電源を入れる / WAKE</span></div>
+  <div class="modelever" id="modelever">
+    <div class="ml-pos on" data-mode="normal">NORMAL</div>
+    <div class="ml-pos" data-mode="pro">PRO</div>
+    <div class="ml-pos" data-mode="ultra">ULTRA</div>
+  </div>
   <div class="top">
     <div class="weclogo-wrap"><span class="weclogo">WEC</span><span class="wecsub">WORLD ENDING CAT<br><span class="biosline">BIOS v1.0 · 640K OK · (C)1998 WIRED</span></span></div>
     <div>CONNECTION: <b>PSYCHIC NETWORK</b> &nbsp;·&nbsp; <span id="clock">--:--:--</span></div>
@@ -134,6 +168,8 @@
           </div>
         </div>
       </div>
+      <div id="view-pro"></div>
+      <div id="view-ultra"></div>
     </div>
 
     <!-- RIGHT -->
@@ -240,6 +276,47 @@ $('machine').addEventListener('click',e=>{if(!busy && !e.target.closest('.exe'))
 $('lights').addEventListener('click',()=>{const off=document.body.classList.toggle('focus');
   $('lightslabel').textContent=off?'▲ 電源を入れる / WAKE':'◐ 消灯 / SLEEP';
   if(!off){document.body.classList.add('lighting');setTimeout(()=>document.body.classList.remove('lighting'),820);}});
+
+// ---- Stage 2: mode lever NORMAL / PRO / ULTRA ----
+let mode='normal';
+function setMode(m){
+  if(m===mode && m==='normal') return;
+  mode=m;
+  document.querySelectorAll('.ml-pos').forEach(p=>p.classList.toggle('on',p.dataset.mode===m));
+  $('machine').style.display=m==='normal'?'':'none';
+  $('view-pro').style.display=m==='pro'?'flex':'none';
+  $('view-ultra').style.display=m==='ultra'?'flex':'none';
+  document.body.classList.toggle('ultra',m==='ultra');
+  if(window.__wiredGlobe) window.__wiredGlobe.setBlue(m==='ultra');
+  if(m==='pro') runPro(); else if(m==='ultra') runUltra();
+}
+document.querySelectorAll('.ml-pos').forEach(p=>p.addEventListener('click',()=>setMode(p.dataset.mode)));
+
+const CATIMG='assets/wired_cat.png';
+const SEAL={mizaru:'EYES SEALED · 見ざる',kikazaru:'EARS SEALED · 聞かざる',iwazaru:'MOUTH SEALED · 言わざる'};
+async function runPro(){
+  const v=$('view-pro');
+  v.innerHTML='<div class="proagg">三賢猫が深層思考中にゃ… (deep thinking ×3)</div>'+
+    ['mizaru','kikazaru','iwazaru'].map(id=>`<div class="procat"><div class="seal">${SEAL[id]}</div><img src="${CATIMG}"><div class="pp">…</div><div class="pn">${id}</div><div class="pv">演算中…</div></div>`).join('');
+  let d; try{d=await fetch('/api/pro').then(r=>r.json());}catch(e){return;}
+  v.innerHTML=d.cats.map(c=>`<div class="procat"><div class="seal">${SEAL[c.id]||c.label}</div><img src="${CATIMG}">
+    <div class="pp">${c.probability}<span style="font-size:1rem">%</span></div><div class="pn">${c.label} · ${c.magi}</div>
+    <div class="pv">主要因: ${c.top}</div></div>`).join('')
+    +`<div class="proagg">合議 最終: <b>${d.final}%</b> &nbsp; 合議幅 ${d.spread}pt · ${d.consensus} &nbsp;|&nbsp; PRO = 全17因子 + 深層思考</div>`;
+}
+async function runUltra(){
+  const v=$('view-ultra');
+  v.innerHTML='<div class="uhead">ULTRA // 16 AGENTS 起動 — 各エージェントが1因子を深層分析中にゃ…</div><div class="ugrid" id="ugrid"></div>';
+  const grid=$('ugrid');
+  grid.innerHTML=Array.from({length:16},(_,i)=>`<div class="ucat"><img src="${CATIMG}"><div class="uf">AGENT ${String(i+1).padStart(2,'0')}</div><div class="ubar"><i></i></div><div class="ua">…</div></div>`).join('');
+  const bars=[...grid.querySelectorAll('.ubar>i')]; let p=4;
+  const t=setInterval(()=>{p=Math.min(90,p+Math.random()*5);bars.forEach((b,i)=>b.style.width=Math.min(96,p+i*1.6)+'%');},240);
+  let d; try{d=await fetch('/api/ultra').then(r=>r.json());}catch(e){clearInterval(t);return;}
+  clearInterval(t);
+  const fs=(d.factors||[]).slice(0,16);
+  grid.innerHTML=fs.map(f=>`<div class="ucat" title="${(f.note||'').replace(/"/g,'')}"><img src="${CATIMG}"><div class="uf">${f.label}</div><div class="ubar"><i style="width:${Math.min(100,f.a*100)}%"></i></div><div class="ua">${(f.a).toFixed(2)}</div></div>`).join('');
+  v.querySelector('.uhead').innerHTML=`ULTRA 合議 最終終末確率: <b>${d.probability}%</b> &nbsp; — 16 deep agents`;
+}
 
 // ---- draggable wireframe globe with live typhoon tracks ----
 (function(){

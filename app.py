@@ -269,6 +269,47 @@ def earth():
         return jsonify({"url": "", "error": str(e)[:80]})
 
 
+# ---- PRO mode: three 三猿 cats, deep thinking, different "world seeds" ----
+PRO_CATS = [
+    {"id": "mizaru", "label": "見ざる", "magi": "MELCHIOR", "luck": 0.14,
+     "filter": lambda d: {**d, "doom_news": {"count": 0}}},          # blind to news
+    {"id": "kikazaru", "label": "聞かざる", "magi": "BALTHASAR", "luck": 0.18,
+     "filter": lambda d: {**d, "space_weather": {}}},                # deaf to comms/space weather
+    {"id": "iwazaru", "label": "言わざる", "magi": "CASPER", "luck": 0.30,
+     "filter": lambda d: d},                                         # most conservative
+]
+
+
+@app.route("/api/pro")
+def pro():
+    data = signals.fetch_all(NASA_KEY)
+    soft = doom_model.score_soft_factors(client, MODEL, budget=512)  # deep reasoning
+    cats = []
+    for c in PRO_CATS:
+        res = doom_model.compute(c["filter"](data), soft, luck=c["luck"])
+        cats.append({"id": c["id"], "label": c["label"], "magi": c["magi"],
+                     "probability": res["probability"], "top": res["factors"][0]["label"],
+                     "factors": res["factors"][:4]})
+    probs = [c["probability"] for c in cats]
+    final = round(sum(probs) / 3, 2)
+    spread = round(max(probs) - min(probs), 2)
+    return jsonify({"cats": cats, "final": final, "spread": spread,
+                    "consensus": "高い一致" if spread < 3 else "やや相違",
+                    "signals": magi_signals_line(data)})
+
+
+@app.route("/api/ultra")
+def ultra():
+    data = signals.fetch_all(NASA_KEY)
+    soft = {}
+    with ThreadPoolExecutor(max_workers=7) as ex:
+        for k, v in ex.map(lambda s: (s[0], doom_model.score_one_soft(client, MODEL, s[0], s[1])), doom_model.SOFT):
+            soft[k] = v
+    out = doom_model.compute(data, soft, luck=round(random.uniform(0.10, 0.25), 3))
+    return jsonify({"probability": out["probability"], "factors": out["factors"],
+                    "signals": magi_signals_line(data)})
+
+
 if __name__ == "__main__":
     # Pre-warm the signal cache in the background so the first spin is fast too.
     import threading

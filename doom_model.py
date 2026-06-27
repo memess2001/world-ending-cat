@@ -88,9 +88,29 @@ ANCHOR = [  # (key, label, group, w, a)  -- mostly flavor / can't-predict
 ]
 
 
-def score_soft_factors(client, model):
+def score_one_soft(client, model, key, label):
+    """ULTRA: one dedicated deep agent (search-grounded + thinking) scores ONE soft factor."""
+    from google.genai import types
+    prompt = (f"あなたは地球規模の破滅リスクの専門アナリストにゃ。『{label}』という破滅リスク要因だけを担当し、"
+              "今日の世界情勢・最新ニュースを深く分析するにゃ。その『急性異常度』を 0.0(完全に平常)〜1.0(差し迫った危機) "
+              "で採点するにゃ。慢性的な状態は『平常運転』として 0 に近く、今日 新たに急性悪化した場合のみ高得点にゃ。"
+              'JSONだけ返すにゃ: {"a":0.0,"note":"根拠(日本語25字)"}')
+    try:
+        r = client.models.generate_content(model=model, contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.5, max_output_tokens=800,
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+                thinking_config=types.ThinkingConfig(thinking_budget=256)))
+        txt = r.text or ""
+        o = json.loads(txt[txt.find("{"):txt.rfind("}") + 1])
+        return {"a": max(0.0, min(1.0, float(o["a"]))), "note": o.get("note", "")}
+    except Exception:
+        return {"a": 0.1, "note": "(分析失敗)"}
+
+
+def score_soft_factors(client, model, budget=0):
     """One Gemini call scores all soft factors 0-1 from today's world situation.
-    Tries Google Search grounding first (news-based), falls back to ungrounded."""
+    Tries Google Search grounding first (news-based), falls back to ungrounded.
+    budget>0 enables deeper reasoning (PRO mode)."""
     from google.genai import types
     keys = ", ".join(f'"{k}"' for k, *_ in SOFT)
     labels = "\n".join(f"- {k}: {lbl}" for k, lbl, *_ in SOFT)
@@ -105,8 +125,8 @@ def score_soft_factors(client, model):
               ", ".join(f'"{k}":{{"a":0.0,"note":"短い根拠(日本語20字)"}}' for k, *_ in SOFT) + "}")
 
     def _call(use_search):
-        cfg_kw = dict(temperature=0.6, max_output_tokens=900,
-                      thinking_config=types.ThinkingConfig(thinking_budget=0))
+        cfg_kw = dict(temperature=0.6, max_output_tokens=900 + budget,
+                      thinking_config=types.ThinkingConfig(thinking_budget=budget))
         if use_search:
             cfg_kw["tools"] = [types.Tool(google_search=types.GoogleSearch())]
         else:
